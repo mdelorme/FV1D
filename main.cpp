@@ -28,10 +28,12 @@ int main(int argc, char **argv) {
   while (t + epsilon < tend) {
     Array Unew{U};
 
-    consToPrim(U, Q);
-    dt = compute_dt(Q, (ite == 0 ? save_freq : next_save-t));
+    bool save_needed = (t + epsilon > next_save);
 
-    if (t + epsilon > next_save) {
+    consToPrim(U, Q);
+    dt = compute_dt(Q, (ite == 0 ? save_freq : next_save-t), save_needed);
+
+    if (save_needed) {
       std::cout << " - Saving at time " << t << std::endl;
       save_solution(Q, ite++, t, dt);
       next_save += save_freq;

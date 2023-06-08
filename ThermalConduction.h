@@ -5,16 +5,29 @@
 namespace fv1d {
 
 real_t compute_kappa(real_t x) {
+  real_t res;
   switch (thermal_conductivity_mode) {
-    default: return kappa1;
+    case TCM_B02: 
+    {
+      real_t tr = (tanh((x-b02_xmid)/b02_thickness) + 1.0) * 0.5;
+      res = kappa * (b02_kappa1 * (1.0-tr) + b02_kappa2 * (tr));
+      break;
+    }
+    default:
+      res = kappa;
   }
+
+  return res;
 }
 
 void apply_thermal_conduction(Array &Q, Array &Unew, real_t dt) {
+  real_t ftop, fbot;
+  
+  #pragma omp parallel for  
   for (int i=ibeg; i < iend; ++i) {
     real_t x = get_x(i);
-    real_t kappaL = compute_kappa(x-0.5*dx);
-    real_t kappaR = compute_kappa(x+0.5*dx);
+    real_t kappaL = 0.5 * (compute_kappa(x) + compute_kappa(x-dx));
+    real_t kappaR = 0.5 * (compute_kappa(x) + compute_kappa(x+dx));
 
     // Ideal EOS with R = 1 assumed. T = P/rho
     real_t TC = Q[i][IP]   / Q[i][IR];
@@ -38,6 +51,7 @@ void apply_thermal_conduction(Array &Q, Array &Unew, real_t dt) {
         case BCTC_FIXED_GRADIENT:    FL = kappaL * bctc_xmin_value; break;
         default: break;
       }
+      ftop = FL;
     }
 
     if (i==iend-1 && bctc_xmax != BCTC_NONE) {
@@ -46,11 +60,14 @@ void apply_thermal_conduction(Array &Q, Array &Unew, real_t dt) {
         case BCTC_FIXED_GRADIENT:    FR = kappaR * bctc_xmax_value; break;       
         default: break;
       }
+      fbot = FR;
     }
 
     // And updating using a Godunov-like scheme
-    Unew[i][IE] += dt/dx * (FL - FR);
+    Unew[i][IE] += dt/dx * (FR - FL);
   }
+
+  //std::cout << "Fluxes " << ftop << " " << fbot << std::endl;
 }
 
 }

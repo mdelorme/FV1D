@@ -41,6 +41,7 @@ State reconstruct(State &q, State &slope, real_t sign) {
 }
 
 void compute_fluxes_and_update(Array &Q, Array &slopes, Array &Unew, real_t dt) {
+  #pragma omp parallel for
   for (int i=ibeg; i <= iend; ++i) {
     State qCL = reconstruct(Q[i],   slopes[i], -1.0);
     State qCR = reconstruct(Q[i],   slopes[i],  1.0);

@@ -11,6 +11,7 @@ real_t compute_mu(real_t x) {
 }
 
 void apply_viscosity(Array &Q, Array &Unew, real_t dt) {
+  #pragma omp parallel for
   for (int i=ibeg; i < iend; ++i) {
     real_t x = get_x(i);
     real_t muL = compute_mu(x-0.5*dx);

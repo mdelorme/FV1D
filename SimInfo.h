@@ -74,6 +74,7 @@ real_t dx;   // Space step
 real_t epsilon = 1.0e-6;
 real_t gamma0 = 5.0/3.0;
 bool gravity = false;
+real_t g;
 bool well_balanced_flux_at_bc = true;
 bool well_balanced = false;
 std::string problem;
@@ -81,7 +82,7 @@ std::string problem;
 // Thermal conduction
 bool thermal_conductivity_active;
 ThermalConductivityMode thermal_conductivity_mode;
-real_t kappa1;
+real_t kappa;
 
 BCTC_Mode bctc_xmin, bctc_xmax;
 real_t bctc_xmin_value, bctc_xmax_value;
@@ -92,9 +93,16 @@ ViscosityMode viscosity_mode;
 real_t mu;
 
 // Polytropes and such
-real_t m1 = 1.0;
-real_t theta1 = 10.0;
-real_t g = theta1*(m1+1.0);
+real_t m1;
+real_t theta1;
+real_t m2;
+real_t theta2;
+
+// B02
+real_t b02_xmid;
+real_t b02_kappa1;
+real_t b02_kappa2;
+real_t b02_thickness;
 
 // Helper to get the position in the mesh
 real_t get_x(int i) {
@@ -156,6 +164,8 @@ void read_inifile(std::string filename) {
   g       = reader.GetFloat("physics", "g", 0.0);
   m1      = reader.GetFloat("polytrope", "m1", 1.0);
   theta1  = reader.GetFloat("polytrope", "theta1", 10.0);
+  m2      = reader.GetFloat("polytrope", "m2", 1.0);
+  theta2  = reader.GetFloat("polytrope", "theta2", 10.0);
   problem = reader.Get("physics", "problem", "blast");
   well_balanced_flux_at_bc = reader.GetBoolean("physics", "well_balanced_flux_at_bc", false);
 
@@ -167,7 +177,7 @@ void read_inifile(std::string filename) {
     {"B02",      TCM_B02}
   };
   thermal_conductivity_mode = thermal_conductivity_map[tmp];
-  kappa1 = reader.GetFloat("thermal_conduction", "kappa1", 0.0);
+  kappa = reader.GetFloat("thermal_conduction", "kappa", 0.0);
 
   std::map<std::string, BCTC_Mode> bctc_map{
     {"none",              BCTC_NONE},
@@ -189,6 +199,12 @@ void read_inifile(std::string filename) {
   };
   viscosity_mode = viscosity_map[tmp];
   mu = reader.GetFloat("viscosity", "mu", 0.0);
+
+  // B02
+  b02_xmid      = reader.GetFloat("B02", "xmid", 1.0);
+  b02_kappa1    = reader.GetFloat("B02", "kappa1", 1.0);
+  b02_kappa2    = reader.GetFloat("B02", "kappa2", 1.0);
+  b02_thickness = reader.GetFloat("B02", "thickness", 0.1);
 } 
 
 // Function to apply for the boundaries
