@@ -109,9 +109,10 @@ if no_anim:
 else:
   cur_ite = 0
 
-mp = ax[1,0].scatter(time[cur_ite], mass[cur_ite], s=30, color='red')
-Ekp = ax[1,1].scatter(time[cur_ite], Ek[cur_ite], s=30, color='red')
-ep = ax[1,2].scatter(time[cur_ite], e[cur_ite], s=30, color='red')
+if not no_anim:
+  mp = ax[1,0].scatter(time[cur_ite], mass[cur_ite], s=30, color='red')
+  Ekp = ax[1,1].scatter(time[cur_ite], Ek[cur_ite], s=30, color='red')
+  ep = ax[1,2].scatter(time[cur_ite], e[cur_ite], s=30, color='red')
 
 base_ite = f'ite_{cur_ite}'
 
