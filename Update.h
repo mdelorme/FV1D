@@ -41,14 +41,17 @@ State reconstruct(State &q, State &slope, real_t g, real_t sign) {
 }
 
 void compute_fluxes_and_update(Array &Q, Array &slopes, Array &Unew, real_t dt) {
+  real_t tot_flux_mass = 0.0, tot_mass = 0.0;
   #pragma omp parallel for
   for (int i=ibeg; i <= iend; ++i) {
-    real_t g = gravity_value(get_x(i), dt);
+    real_t gL = gravity_value(0.5*(get_x(i)+get_x(i-1)), dt);
+    real_t gR = gravity_value(0.5*(get_x(i)+get_x(i+1)), dt);
+    real_t g  = gravity_value(get_x(i), dt);
   
-    State qCL = reconstruct(Q[i],   slopes[i],   g, -1.0);
-    State qCR = reconstruct(Q[i],   slopes[i],   g,  1.0);
-    State qL  = reconstruct(Q[i-1], slopes[i-1], g,  1.0);
-    State qR  = reconstruct(Q[i+1], slopes[i+1], g, -1.0);
+    State qCL = reconstruct(Q[i],   slopes[i],   gL, -1.0);
+    State qCR = reconstruct(Q[i],   slopes[i],   gR,  1.0);
+    State qL  = reconstruct(Q[i-1], slopes[i-1], gL,  1.0);
+    State qR  = reconstruct(Q[i+1], slopes[i+1], gR, -1.0);
     
     auto riemann = [&](State qL, State qR, State &flux, real_t &pout) {
       switch (riemann_solver) {
