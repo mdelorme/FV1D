@@ -13,28 +13,26 @@ namespace fv1d {
 void save_solution(const Array &Q, int iteration, real_t t, real_t dt) {
   std::ostringstream oss;
   
-  std::setw(4);
-  std::setfill('0');
-  oss << "ite_" << iteration;
+  oss << std::setfill('0') << std::setw(4) << iteration;
   std::string path = oss.str();
   auto flag = (iteration == 0 ? File::Truncate : File::ReadWrite);
 
   File file(filename_out, flag);
 
   if (iteration == 0) {
+    file.createGroup("ite");
     file.createAttribute("N", N);
     file.createAttribute("Nx", Nx);
     file.createAttribute("ibeg", ibeg);
     file.createAttribute("iend", iend);
     file.createAttribute("problem", problem);
+    file.createAttribute("gamma", gamma0);
 
     std::vector<real_t> x;
     for (int i=ibeg; i < iend; ++i)
       x.push_back(get_x(i));
     file.createDataSet("x", x);
   }
-
-  
 
   using Vector = std::vector<real_t>;
 
@@ -51,7 +49,7 @@ void save_solution(const Array &Q, int iteration, real_t t, real_t dt) {
     vP.push_back(p);
   }
 
-  auto group = file.createGroup(path);
+  auto group = file.getGroup("ite").createGroup(path);
   group.createDataSet("rho", vrho);
   group.createDataSet("vel", vvel);
   group.createDataSet("prs", vP);

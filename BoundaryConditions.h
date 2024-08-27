@@ -27,9 +27,9 @@ State fill_reflecting_gravity(Array &Q, int i, int iref, real_t dt) {
   State q = Q[iref];
 
   q[IU] = -Q[isym][IU];
-
-  if (gravity)
-    q[IU] += dt*g;
+  
+  real_t g = gravity_value(get_x(i), dt);
+  q[IU] += dt*g;
 
   return q;  
 }
@@ -44,7 +44,7 @@ State fill_hse(Array &Q, int i, int iref, real_t dt) {
 
   real_t rho = std::pow(1.0 + x*theta1, m1);
   real_t sign = (i < iref ? -1.0 : 1.0);
-  real_t prs = qsym[IP] + 0.5 * dx * g * (rho + qsym[IR]);
+  real_t prs = qsym[IP] + 0.5 * dx * gval * (rho + qsym[IR]);
 
   return State{rho, 0.0, prs};
 }

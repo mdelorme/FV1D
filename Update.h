@@ -25,7 +25,7 @@ void compute_slopes(const Array &Q, Array &slopes) {
   }
 }
 
-State reconstruct(State &q, State &slope, real_t sign) {
+State reconstruct(State &q, State &slope, real_t g, real_t sign) {
   State res;
   switch (reconstruction) {
     case PLM: res = q + slope * sign * 0.5; break; // Piecewise Linear
@@ -43,11 +43,13 @@ State reconstruct(State &q, State &slope, real_t sign) {
 void compute_fluxes_and_update(Array &Q, Array &slopes, Array &Unew, real_t dt) {
   #pragma omp parallel for
   for (int i=ibeg; i <= iend; ++i) {
-    State qCL = reconstruct(Q[i],   slopes[i], -1.0);
-    State qCR = reconstruct(Q[i],   slopes[i],  1.0);
-    State qL  = reconstruct(Q[i-1], slopes[i-1],  1.0);
-    State qR  = reconstruct(Q[i+1], slopes[i+1], -1.0);
-
+    real_t g = gravity_value(get_x(i), dt);
+  
+    State qCL = reconstruct(Q[i],   slopes[i],   g, -1.0);
+    State qCR = reconstruct(Q[i],   slopes[i],   g,  1.0);
+    State qL  = reconstruct(Q[i-1], slopes[i-1], g,  1.0);
+    State qR  = reconstruct(Q[i+1], slopes[i+1], g, -1.0);
+    
     auto riemann = [&](State qL, State qR, State &flux, real_t &pout) {
       switch (riemann_solver) {
         case HLL: hll(qL, qR, flux, pout); break;
@@ -73,13 +75,9 @@ void compute_fluxes_and_update(Array &Q, Array &slopes, Array &Unew, real_t dt) 
     // Godunov update
     Unew[i] += dt/dx * (fluxL - fluxR);
 
-    if (gravity) {
-      // Update momentum
-      Unew[i][IM] += dt * Q[i][IR] * g;
-
-      // Update energy
-      Unew[i][IE]   += dt * 0.5 * (fluxL[IR] + fluxR[IR]) * g;
-    }
+    Unew[i][IM] += dt * Q[i][IR] * g;
+    // Unew[i][IM] += dt * 0.5 * (Q[i][IR] + Unew[i][IR]) * g;
+    Unew[i][IE] += dt * 0.5 * (fluxL[IR] + fluxR[IR])  * g;
 
     Unew[i][IR] = std::max(1.0e-6, Unew[i][IR]);
   }

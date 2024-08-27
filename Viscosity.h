@@ -22,6 +22,11 @@ void apply_viscosity(Array &Q, Array &Unew, real_t dt) {
     real_t FL = muL * four_thirds * (Q[i][IU]-Q[i-1][IU])/dx;
     real_t FR = muR * four_thirds * (Q[i+1][IU]-Q[i][IU])/dx;
 
+    if(i==ibeg)
+      FL = 0;
+    else if(i==iend-1)
+      FR = 0;
+
     // And updating using a Godunov-like scheme
     Unew[i][IE] += dt/dx * (FL - FR);
   }

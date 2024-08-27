@@ -2,6 +2,20 @@
 
 namespace fv1d {
 
+real_t gravity_value(real_t x, real_t dt)
+{
+  switch(gravity){
+    case GT_CONSTANT:
+      return gval;
+      
+    case GT_SINC:
+      return 2 * gval * (sin(x) - x*cos(x)) / (x*x);
+
+    case GT_NONE: default:
+      return 0.0;
+  }
+}
+
 State primToCons(State &q) {
   State res;
   res[IR] = q[IR];

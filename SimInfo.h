@@ -50,6 +50,12 @@ enum ViscosityMode {
   VSC_CONSTANT
 };
 
+enum GravityType {
+  GT_NONE,
+  GT_CONSTANT,
+  GT_SINC,
+};
+
 // Run
 real_t save_freq;
 real_t tend;
@@ -73,8 +79,8 @@ real_t dx;   // Space step
 // Run and physics
 real_t epsilon = 1.0e-6;
 real_t gamma0 = 5.0/3.0;
-bool gravity = false;
-real_t g;
+GravityType gravity = GT_NONE;
+real_t gval;
 bool well_balanced_flux_at_bc = true;
 bool well_balanced = false;
 std::string problem;
@@ -97,6 +103,7 @@ real_t m1;
 real_t theta1;
 real_t m2;
 real_t theta2;
+real_t pert;
 
 // B02
 real_t b02_xmid;
@@ -114,6 +121,15 @@ using Array = std::vector<State>;
 
 void read_inifile(std::string filename) {
   INIReader reader(filename);
+
+  auto map_get = [](auto &map, std::string &val)
+  {
+    if(map.find(val) == map.end()){
+      std::cout << "bad initialisation: \"" << val << "\" unknown." << std::endl;
+      std::exit(1);
+    }
+    return map[val];
+  };
 
   // Mesh
   Nx = reader.GetInteger("mesh", "Nx", 32);
@@ -139,7 +155,7 @@ void read_inifile(std::string filename) {
     {"absorbing",          BC_ABSORBING},
     {"hse",                BC_HSE}
   };
-  boundary = bc_map[tmp];
+  boundary = map_get(bc_map, tmp);
 
   tmp = reader.Get("solvers", "reconstruction", "pcm");
   std::map<std::string, ReconstructionType> recons_map{
@@ -147,27 +163,35 @@ void read_inifile(std::string filename) {
     {"pcm_wb", PCM_WB},
     {"plm",    PLM}
   };
-  reconstruction = recons_map[tmp];
+  reconstruction = map_get(recons_map, tmp);
 
   tmp = reader.Get("solvers", "riemann_solver", "hllc");
   std::map<std::string, RiemannSolver> riemann_map{
     {"hll", HLL},
     {"hllc", HLLC}
   };
-  riemann_solver = riemann_map[tmp];
+  riemann_solver = map_get(riemann_map, tmp);
   CFL = reader.GetFloat("solvers", "CFL", 0.8);
 
   // Physics
   epsilon = reader.GetFloat("misc", "epsilon", 1.0e-6);
   gamma0  = reader.GetFloat("physics", "gamma0", 5.0/3.0);
-  gravity = reader.GetBoolean("physics", "gravity", false);
-  g       = reader.GetFloat("physics", "g", 0.0);
+  gval    = reader.GetFloat("physics", "g", 0.0);
   m1      = reader.GetFloat("polytrope", "m1", 1.0);
   theta1  = reader.GetFloat("polytrope", "theta1", 10.0);
   m2      = reader.GetFloat("polytrope", "m2", 1.0);
   theta2  = reader.GetFloat("polytrope", "theta2", 10.0);
+  pert    = reader.GetFloat("polytrope", "pert", 10.0);
   problem = reader.Get("physics", "problem", "blast");
   well_balanced_flux_at_bc = reader.GetBoolean("physics", "well_balanced_flux_at_bc", false);
+
+  tmp = reader.Get("physics", "gravity", "none");
+  std::map<std::string, GravityType> gt_map{
+    {"none",       GT_NONE},
+    {"constant",   GT_CONSTANT},
+    {"sinc",       GT_SINC}
+  };
+  gravity = map_get(gt_map, tmp);
 
   // Thermal conductivity
   thermal_conductivity_active = reader.GetBoolean("thermal_conduction", "active", false);
@@ -176,7 +200,7 @@ void read_inifile(std::string filename) {
     {"constant", TCM_CONSTANT},
     {"B02",      TCM_B02}
   };
-  thermal_conductivity_mode = thermal_conductivity_map[tmp];
+  thermal_conductivity_mode = map_get(thermal_conductivity_map, tmp);
   kappa = reader.GetFloat("thermal_conduction", "kappa", 0.0);
 
   std::map<std::string, BCTC_Mode> bctc_map{
@@ -185,9 +209,9 @@ void read_inifile(std::string filename) {
     {"fixed_gradient",    BCTC_FIXED_GRADIENT}
   };
   tmp = reader.Get("thermal_conduction", "bc_xmin", "none");
-  bctc_xmin = bctc_map[tmp];
+  bctc_xmin = map_get(bctc_map, tmp);
   tmp = reader.Get("thermal_conduction", "bc_xmax", "none");
-  bctc_xmax = bctc_map[tmp];
+  bctc_xmax = map_get(bctc_map, tmp);
   bctc_xmin_value = reader.GetFloat("thermal_conduction", "bc_xmin_value", 1.0);
   bctc_xmax_value = reader.GetFloat("thermal_conduction", "bc_xmax_value", 1.0);
 
@@ -197,7 +221,7 @@ void read_inifile(std::string filename) {
   std::map<std::string, ViscosityMode> viscosity_map{
     {"constant", VSC_CONSTANT},
   };
-  viscosity_mode = viscosity_map[tmp];
+  viscosity_mode = map_get(viscosity_map, tmp);
   mu = reader.GetFloat("viscosity", "mu", 0.0);
 
   // B02

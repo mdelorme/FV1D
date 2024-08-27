@@ -83,6 +83,27 @@ void init_C91_hse(Array &Q) {
   }
 }
 
+void init_cv_sinc(Array &Q) {
+  std::cout << "Initializing convection sinc" << std::endl;
+
+  for (int i=ibeg; i < iend; ++i) {
+    real_t x = get_x(i);
+    real_t th  = std::sin(x)/x;
+    real_t rho = std::pow(th, m1);
+    real_t prs = std::pow(th, m1+1.0);
+
+    // constexpr real_t pert_base = 1e-3;
+    real_t pert_val = pert * ((float)rand() / (float)RAND_MAX - 0.5)*2.0;
+    const real_t margin = 5*dx;
+    if (x < margin || x > (xmax - margin))
+      pert = 0.0;
+
+    Q[i][IR] = rho;
+    Q[i][IU] = 0.0;
+    Q[i][IP] = prs * (1+pert_val);
+  }
+}
+
 void init_B02(Array &Q) {
   std::cout << "Initializing B02" << std::endl;
 
@@ -150,7 +171,12 @@ void init(Array &Q) {
     init_B02(Q);
   else if (problem == "B02_restart")
     init_B02_restart(Q);
-
+  else if (problem == "cv_sinc")
+    init_cv_sinc(Q);
+  else{
+    printf("missing initial condition.\n");
+    exit(1);
+  }
   // One time init stuff
   init_boundaries();
 }
